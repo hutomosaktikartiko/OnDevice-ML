@@ -9,8 +9,8 @@ import AVFoundation
 import SwiftUI
 import Vision
 
-struct FaceDetectionVisionView: UIViewRepresentable {
-    @ObservedObject var viewModel: FaceDetectionViewModel
+struct FaceDetectionVisionContent: UIViewRepresentable {
+    @ObservedObject var viewModel: FaceDetectionVisionViewModel
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
@@ -35,21 +35,45 @@ struct FaceDetectionVisionView: UIViewRepresentable {
     }
 
     class Coordinator: NSObject {
-        var parent: FaceDetectionVisionView
+        var parent: FaceDetectionVisionContent
 
-        init(_ parent: FaceDetectionVisionView) {
+        init(_ parent: FaceDetectionVisionContent) {
             self.parent = parent
         }
     }
 }
 
-struct FaceDetectionVisionViewContainer: View {
-    @StateObject var viewModel = FaceDetectionViewModel()
+struct FaceDetectionVisionView: View {
+    @StateObject var viewModel = FaceDetectionVisionViewModel()
 
     var body: some View {
-        FaceDetectionVisionView(viewModel: viewModel)
-            .onDisappear {
+        Group {
+            if let detectedFaceImage = viewModel.detectedFaceImage {
+                DetectedFaceView(detectedFaceImage: detectedFaceImage)
+            } else {
+                FaceDetectionVisionContent(viewModel: viewModel)
+                    .onDisappear {
+                        viewModel.stopCamera()
+                    }
+            }
+        }
+        .onChange(of: viewModel.detectedFaceImage) { newValue in
+            if newValue != nil {
                 viewModel.stopCamera()
             }
+        }
+    }
+}
+
+struct DetectedFaceView: View {
+    let detectedFaceImage: CGImage
+
+    var body: some View {
+        VStack {
+            Text("Face Detected")
+            Image(uiImage: UIImage(cgImage: detectedFaceImage))
+                .resizable()
+                .scaledToFit()
+        }
     }
 }

@@ -13,7 +13,7 @@ struct ContentView: View {
         NavigationView {
             List {
                 NavigationLink {
-                    FaceDetectionVisionViewContainer()
+                    FaceDetectionVisionView()
                 } label: {
                     Text("Face Detection Vision")
                 }
