@@ -17,7 +17,14 @@ struct FaceOrientationVisionView: View {
             if viewModel.detectedFaces.count < FaceOrientation.allCases.count {
                 ZStack(alignment: .center) {
                     FaceOrientationVisionContent(viewModel: viewModel)
-                    Text("Current orientation: \(viewModel.currentFaceOrientation.description)")
+                    VStack(alignment: .center) {
+                        Text("Current orientation: \(viewModel.currentFaceOrientation.description)")
+                        Text("Elapsed time: \(String(format: "%.1f", viewModel.elapsedTime)) seconds")
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .foregroundColor(.red)
+                        }
+                    }
                 }
                 .onDisappear {
                     viewModel.stopCamera()
@@ -43,11 +50,7 @@ struct FaceOrientationVisionView: View {
         .onChange(of: viewModel.detectedFaces) { _ in
             print("Detected faces: \(viewModel.detectedFaces)")
 
-            if viewModel.detectedFaces.count == FaceOrientation.allCases.count
-//                ,
-            // Not countains nil on value
-//               viewModel.detectedFaces.values.allSatisfy({ $0 != nil })
-            {
+            if viewModel.detectedFaces.count == FaceOrientation.allCases.count {
                 viewModel.stopCamera()
             }
         }

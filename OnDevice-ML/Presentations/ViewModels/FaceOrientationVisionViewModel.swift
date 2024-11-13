@@ -28,6 +28,17 @@ extension FaceOrientation: CaseIterable, CustomStringConvertible {
 class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerDelegate {
     @Published var currentFaceOrientation: FaceOrientation = .straight
     @Published var detectedFaces: [FaceOrientation: CGImage] = [:]
+    @Published var errorMessage: String?
+    @Published var elapsedTime: TimeInterval = 0
+
+    private var startTime: Date?
+    private var lastFaceObservationTime: Date?
+
+    // Properties for detection buffer and timer
+    private var detectionBuffer: [(isCorrect: Bool, image: CGImage?)] = []
+    private let detectionThreshold = 0.8
+    private let maxDetections = 10
+    private var detectionTimer: Timer?
 
     private var cameraManager = CameraManager()
     private lazy var previewLayer: AVCaptureVideoPreviewLayer = {
@@ -39,17 +50,73 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
     override init() {
         super.init()
         self.cameraManager.delegate = self
+
+        self.startDetectionTimer()
     }
 
-    func startCameraSession() {
-        Task {
-            await self.cameraManager.startSession()
+    private func startDetectionTimer() {
+        // Schedule timer to run every 1 second
+        self.startTime = Date()
+        self.detectionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.processDetectionBuffer()
+            self?.updateElapsedTime()
         }
+    }
+
+    private func updateElapsedTime() {
+        guard let startTime = self.startTime else { return }
+        self.elapsedTime = Date().timeIntervalSince(startTime)
     }
 
     func stopCamera() {
         self.cameraManager.captureSession.stopRunning()
+
+        self.stopDetectionTimer()
+
         print("Camera session stopped")
+    }
+
+    private func stopDetectionTimer() {
+        self.detectionTimer?.invalidate()
+        self.detectionTimer = nil
+    }
+
+    private func processDetectionBuffer() {
+        let correctDetections = self.detectionBuffer.filter { $0.isCorrect }
+        let successRate = Double(correctDetections.count) / Double(self.detectionBuffer.count)
+
+        self.errorMessage = nil
+
+        print("Success rate: \(successRate)")
+        print("Elapsed time: \(String(format: "%.1f", self.elapsedTime)) seconds")
+
+        if successRate >= self.detectionThreshold,
+           let imageToSave = correctDetections.first?.image
+        {
+            self.saveDetectedFace(imageToSave, orientation: self.currentFaceOrientation)
+            self.proceedToNextOrientation()
+        } else if self.detectionBuffer.count >= self.maxDetections {
+            self.errorMessage = "Face \(self.currentFaceOrientation.description) not detected, please try again."
+            print("Error \(String(describing: self.errorMessage))")
+
+            // Reset buffer if threshold not met
+            self.detectionBuffer.removeAll()
+        }
+    }
+
+    private func proceedToNextOrientation() {
+        // Reset buffer and move to next orientation
+        self.detectionBuffer.removeAll()
+
+        // Move to the next orientation
+        switch self.currentFaceOrientation {
+        case .straight:
+            self.currentFaceOrientation = .left
+        case .left:
+            self.currentFaceOrientation = .right
+        case .right:
+            self.stopDetectionTimer()
+        }
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -57,6 +124,13 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
             print("Failed to get pixel buffer from sample buffer")
             return
         }
+
+        // Introduce a delay mechanism
+        let currentTime = Date()
+        if let lastTime = lastFaceObservationTime, currentTime.timeIntervalSince(lastTime) < 1.0 {
+            return
+        }
+        self.lastFaceObservationTime = currentTime
 
         let requestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         do {
@@ -76,7 +150,6 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
                 return
             }
             if let results = request.results as? [VNFaceObservation], let firstFace = results.first {
-//                print("Detected face")
                 self.handleFaceObservation(firstFace)
             } else {
                 print("No face detected")
@@ -87,26 +160,23 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
     private func handleFaceObservation(_ faceObservation: VNFaceObservation) {
         let landmarksRequest = VNDetectFaceLandmarksRequest { [weak self] request, error in
             DispatchQueue.main.async {
+                print("handleFaceObservation")
+
                 guard let self = self else { return }
                 if let error = error {
-                    print("Face landmarks request failed: \(error)")
+                    print("Face detection request failed: \(error)")
                     return
                 }
                 if let results = request.results as? [VNFaceObservation], let firstFace = results.first {
-                    if self.checkFaceOrientation(with: firstFace),
-                       let cgImage = self.extractImage()
-                    {
-                        self.saveDetectedFace(cgImage, orientation: self.currentFaceOrientation)
+                    let isCorrectOrientation = self.checkFaceOrientation(with: firstFace)
+                    let currentImage = self.extractImage()
+                    self.detectionBuffer.append((isCorrect: isCorrectOrientation, image: currentImage))
 
-                        switch self.currentFaceOrientation {
-                        case .straight:
-                            self.currentFaceOrientation = .left
-                        case .left:
-                            self.currentFaceOrientation = .right
-                        case .right:
-                            break
-                        }
+                    if self.detectionBuffer.count > self.maxDetections {
+                        self.detectionBuffer.removeFirst()
                     }
+                } else {
+                    print("No face detected")
                 }
             }
         }
