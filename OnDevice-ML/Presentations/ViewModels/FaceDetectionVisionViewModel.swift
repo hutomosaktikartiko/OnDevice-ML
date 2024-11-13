@@ -31,7 +31,7 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
 
     func stopCamera() {
         self.cameraManager.captureSession.stopRunning()
-        
+
         print("Camera session stopped")
     }
 
@@ -60,7 +60,7 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
             }
             if let results = request.results as? [VNFaceObservation], let firstFace = results.first {
                 print("Detected face")
-                if let cgImage = self.extractImage() {
+                if let cgImage = self.cameraManager.currentPixelBuffer.toCGImage() {
                     self.detectedFaceImage = cgImage
                     self.stopCamera()
                 }
@@ -69,14 +69,6 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
                 self.detectedFaceImage = nil
             }
         }
-    }
-
-    private func extractImage() -> CGImage? {
-        guard let pixelBuffer = cameraManager.currentPixelBuffer else { return nil }
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
-
-        return context.createCGImage(ciImage, from: ciImage.extent)
     }
 
     func getPreviewLayer() -> AVCaptureVideoPreviewLayer {

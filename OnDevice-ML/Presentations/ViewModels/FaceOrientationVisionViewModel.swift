@@ -169,7 +169,7 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
                 }
                 if let results = request.results as? [VNFaceObservation], let firstFace = results.first {
                     let isCorrectOrientation = self.checkFaceOrientation(with: firstFace)
-                    let currentImage = self.extractImage()
+                    let currentImage = self.cameraManager.currentPixelBuffer.toCGImage()
                     self.detectionBuffer.append((isCorrect: isCorrectOrientation, image: currentImage))
 
                     if self.detectionBuffer.count > self.maxDetections {
@@ -228,14 +228,6 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
 
         // Save the new detected face
         self.detectedFaces[orientation] = image
-    }
-
-    private func extractImage() -> CGImage? {
-        guard let pixelBuffer = cameraManager.currentPixelBuffer else { return nil }
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
-
-        return context.createCGImage(ciImage, from: ciImage.extent)
     }
 
     func getPreviewLayer() -> AVCaptureVideoPreviewLayer {
