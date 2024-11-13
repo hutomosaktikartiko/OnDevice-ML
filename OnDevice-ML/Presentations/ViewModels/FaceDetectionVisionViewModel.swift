@@ -31,11 +31,8 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
 
     func stopCamera() {
         self.cameraManager.captureSession.stopRunning()
+        
         print("Camera session stopped")
-    }
-
-    func didCapturePhoto(_ image: CGImage) {
-        // Handle captured photo if needed
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -52,6 +49,8 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
         }
     }
 
+    func didCapturePhoto(_ image: CGImage) {}
+
     lazy var faceDetectionRequest = VNDetectFaceRectanglesRequest { [weak self] request, error in
         DispatchQueue.main.async {
             guard let self = self else { return }
@@ -61,7 +60,7 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
             }
             if let results = request.results as? [VNFaceObservation], let firstFace = results.first {
                 print("Detected face")
-                if let cgImage = self.extractImage(from: firstFace) {
+                if let cgImage = self.extractImage() {
                     self.detectedFaceImage = cgImage
                     self.stopCamera()
                 }
@@ -72,7 +71,7 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
         }
     }
 
-    private func extractImage(from observation: VNFaceObservation) -> CGImage? {
+    private func extractImage() -> CGImage? {
         guard let pixelBuffer = cameraManager.currentPixelBuffer else { return nil }
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext()
@@ -82,16 +81,5 @@ class FaceDetectionVisionViewModel: NSObject, ObservableObject, CameraManagerDel
 
     func getPreviewLayer() -> AVCaptureVideoPreviewLayer {
         return self.previewLayer
-    }
-}
-
-private extension CGRect {
-    func scaled(to size: CGSize) -> CGRect {
-        return CGRect(
-            x: self.origin.x * size.width,
-            y: (1 - self.origin.y - self.height) * size.height,
-            width: self.width * size.width,
-            height: self.height * size.height
-        )
     }
 }

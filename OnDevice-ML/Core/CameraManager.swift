@@ -20,13 +20,21 @@ class CameraManager: NSObject, ObservableObject {
     private var deviceInput: AVCaptureDeviceInput?
     private var videoOutput: AVCaptureVideoDataOutput?
     private var photoOutput: AVCapturePhotoOutput?
-    private let systemPreferredCamera = AVCaptureDevice.default(for: .video)
     private var currentCameraPosition: AVCaptureDevice.Position = .back
     var flashMode: AVCaptureDevice.FlashMode = .off
 
     private var sessionQueue = DispatchQueue(label: "video.preview.session")
     
     private var addToPreviewStream: ((CGImage) -> Void)?
+    
+    override init() {
+        super.init()
+        
+        Task {
+            await configureSession()
+            await startSession()
+        }
+    }
     
     lazy var previewStream: AsyncStream<CGImage> = AsyncStream { continuation in
         addToPreviewStream = { cgImage in
@@ -50,18 +58,15 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    override init() {
-        super.init()
-        
-        Task {
-            await configureSession()
-            await startSession()
-        }
-    }
-    
     private func configureSession() async {
+        let systemPreferredCamera = AVCaptureDevice.default(
+            .builtInWideAngleCamera,
+            for: .video,
+            position: currentCameraPosition
+        )
+        
         guard await isAuthorized,
-              let systemPreferredCamera,
+              let systemPreferredCamera = systemPreferredCamera,
               let deviceInput = try? AVCaptureDeviceInput(device: systemPreferredCamera)
         else { return }
          

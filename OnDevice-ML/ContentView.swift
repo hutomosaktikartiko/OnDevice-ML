@@ -17,6 +17,11 @@ struct ContentView: View {
                 } label: {
                     Text("Face Detection Vision")
                 }
+                NavigationLink {
+                    FaceOrientationVisionView()
+                } label: {
+                    Text("Face Orientation Vision")
+                }
             }
         }
     }

@@ -9,7 +9,34 @@ import AVFoundation
 import SwiftUI
 import Vision
 
-struct FaceDetectionVisionContent: UIViewRepresentable {
+struct FaceDetectionVisionView: View {
+    @StateObject var viewModel = FaceDetectionVisionViewModel()
+
+    var body: some View {
+        Group {
+            if let detectedFaceImage = viewModel.detectedFaceImage {
+                VStack {
+                    Text("Face Detected")
+                    Image(uiImage: UIImage(cgImage: detectedFaceImage))
+                        .resizable()
+                        .scaledToFit()
+                }
+            } else {
+                FaceDetectionVisionContent(viewModel: viewModel)
+                    .onDisappear {
+                        viewModel.stopCamera()
+                    }
+            }
+        }
+        .onChange(of: viewModel.detectedFaceImage) { newValue in
+            if newValue != nil {
+                viewModel.stopCamera()
+            }
+        }
+    }
+}
+
+private struct FaceDetectionVisionContent: UIViewRepresentable {
     @ObservedObject var viewModel: FaceDetectionVisionViewModel
 
     func makeUIView(context: Context) -> UIView {
@@ -39,41 +66,6 @@ struct FaceDetectionVisionContent: UIViewRepresentable {
 
         init(_ parent: FaceDetectionVisionContent) {
             self.parent = parent
-        }
-    }
-}
-
-struct FaceDetectionVisionView: View {
-    @StateObject var viewModel = FaceDetectionVisionViewModel()
-
-    var body: some View {
-        Group {
-            if let detectedFaceImage = viewModel.detectedFaceImage {
-                DetectedFaceView(detectedFaceImage: detectedFaceImage)
-            } else {
-                FaceDetectionVisionContent(viewModel: viewModel)
-                    .onDisappear {
-                        viewModel.stopCamera()
-                    }
-            }
-        }
-        .onChange(of: viewModel.detectedFaceImage) { newValue in
-            if newValue != nil {
-                viewModel.stopCamera()
-            }
-        }
-    }
-}
-
-struct DetectedFaceView: View {
-    let detectedFaceImage: CGImage
-
-    var body: some View {
-        VStack {
-            Text("Face Detected")
-            Image(uiImage: UIImage(cgImage: detectedFaceImage))
-                .resizable()
-                .scaledToFit()
         }
     }
 }
