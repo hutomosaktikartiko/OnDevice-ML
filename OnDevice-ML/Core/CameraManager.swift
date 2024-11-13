@@ -20,7 +20,7 @@ class CameraManager: NSObject, ObservableObject {
     private var deviceInput: AVCaptureDeviceInput?
     private var videoOutput: AVCaptureVideoDataOutput?
     private var photoOutput: AVCapturePhotoOutput?
-    private var currentCameraPosition: AVCaptureDevice.Position = .back
+    var currentCameraPosition: AVCaptureDevice.Position = .front
     var flashMode: AVCaptureDevice.FlashMode = .off
 
     private var sessionQueue = DispatchQueue(label: "video.preview.session")

@@ -196,8 +196,13 @@ class FaceOrientationVisionViewModel: NSObject, ObservableObject, CameraManagerD
         let leftEyePoint = leftEye.normalizedPoints[0]
         let rightEyePoint = rightEye.normalizedPoints[0]
 
-        let deltaX = rightEyePoint.x - leftEyePoint.x
+        var deltaX = rightEyePoint.x - leftEyePoint.x
         let deltaY = rightEyePoint.y - leftEyePoint.y
+
+        // Check current camera position
+        if self.cameraManager.currentCameraPosition == .front {
+            deltaX = -deltaX
+        }
 
         let angle = atan2(deltaY, deltaX) * 180 / .pi
 
