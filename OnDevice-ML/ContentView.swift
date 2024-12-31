@@ -22,6 +22,11 @@ struct ContentView: View {
                 } label: {
                     Text("Face Orientation Vision")
                 }
+                NavigationLink {
+                    SpeechToTextView()
+                } label: {
+                    Text("Speech to Text")
+                }
             }
         }
     }
